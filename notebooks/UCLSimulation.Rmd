@@ -16,7 +16,6 @@ references:
   url: "https://skdeshpande91.github.io/stat479_fall2025/lectures/lecture12.html"
 ---
 
-
 ```{r echo=FALSE}
 require(devtools, quietly = TRUE)
 require(tidyverse, quietly = TRUE)
@@ -27,7 +26,10 @@ require(hrbrthemes, quietly = TRUE)
 ```
 
 ## Data Overview
-The following data was gathered using the `worldfootballR` library to scrape 2019-20 UEFA Champions League group stage and knockout game results and the 2018-19 domestic league results for the 32 competing teams across 16 individual league competitions^[Members from the following domestic leagues took part in the 2019-20 UEFA Champions League group stage: *Austrian Football Bundesliga, Belgian Pro League, Croatian Football League, Czech First League, English Premier League, French Ligue 1, German Fusball Bundesliga, Greek Super League, Italian Serie A, Dutch Eredivise, Portugese Premeira Liga, Russian Premier League, Serbian SuperLiga, Spanish La Liga, Turkish Super Lig, Ukrainian Premier League*] from [fbref.com](https://www.fbref.com).
+
+The following data was gathered using the `worldfootballR` library to scrape 2019-20 UEFA Champions League group stage and knockout game results and the 2018-19 domestic league results for the 32 competing teams across 16 individual league competitions[^1] from [fbref.com](https://www.fbref.com).
+
+[^1]: Members from the following domestic leagues took part in the 2019-20 UEFA Champions League group stage: *Austrian Football Bundesliga, Belgian Pro League, Croatian Football League, Czech First League, English Premier League, French Ligue 1, German Fusball Bundesliga, Greek Super League, Italian Serie A, Dutch Eredivise, Portugese Premeira Liga, Russian Premier League, Serbian SuperLiga, Spanish La Liga, Turkish Super Lig, Ukrainian Premier League*
 
 ```{r echo=FALSE}
 ## Read in all league results
@@ -50,7 +52,10 @@ ukraine = readr::read_csv('../data/raw/Ukraine_Ukrainian_Premier_League_2018-19.
 ```
 
 ## Data Pre-processing
-In order to use the domestic competition and UEFA Champions League matchup data scraped from [fbref.com](https://www.fbref.com/)^[Specific links and FBRef pages used can be found in the *GettingRawMatchupData.Rmd* notebook.] with the Bradley-Terry package, `BradleyTerry2`, the raw data must first be cleaned, parsed, and reformated into the package's expected format. This code follows that found in Lecture 12 [@lecture12], particularly when refactoring home and away win data into a trainable DataFrame.
+
+In order to use the domestic competition and UEFA Champions League matchup data scraped from [fbref.com](https://www.fbref.com/)[^2] with the Bradley-Terry package, `BradleyTerry2`, the raw data must first be cleaned, parsed, and reformated into the package's expected format. This code follows that found in Lecture 12 [@lecture12], particularly when refactoring home and away win data into a trainable DataFrame.
+
+[^2]: Specific links and FBRef pages used can be found in the *GettingRawMatchupData.Rmd* notebook.
 
 ```{r}
 # Helper to remove xG columns from relevant leagues so all competitions have the same number of columns
@@ -100,11 +105,14 @@ all = austria %>%
   rbind(ukraine)
 all %>% head(10)
 ```
+
 With the leagues all concatenated together, we can check to see the distribution of the complete DataFrame's members.
+
 ```{r, echo=FALSE}
 set.seed(439)
 all[sample(1:nrow(all), size=10),]
 ```
+
 ```{r, echo = FALSE}
 matches_by_country = all %>%
                         group_by(Country) %>%
@@ -147,14 +155,19 @@ results = no_ties %>%
     away.team = factor(away.team, levels = unik_teams))
 results[sample(1:nrow(results),size=10),]
 ```
+
 With the data now in place and formatted for `BradleyTerry2`, we can begin fitting a Bradley-Terry model to determine latent team strength for all clubs competing in the 2019-20 UEFA Champions League group stage based on their domestic league results.
 
 ## Fitting Bradley-Terry Model Based on Domestic League Results
-For this problem, we'll use the worst performing team in the lowest-rated domestic competition based on the UEFA association club coefficient^[https://en.wikipedia.org/wiki/UEFA_coefficient] for the 2018-19 season, which can be found at [UEFA.com](https://www.uefa.com/nationalassociations/uefarankings/country/?year=2019).
+
+For this problem, we'll use the worst performing team in the lowest-rated domestic competition based on the UEFA association club coefficient[^3] for the 2018-19 season, which can be found at [UEFA.com](https://www.uefa.com/nationalassociations/uefarankings/country/?year=2019).
+
+[^3]: <https://en.wikipedia.org/wiki/UEFA_coefficient>
 
 Based on the table below, Greece had the lowest rating of the 16 nations represented by clubs in the 2019-20 tournament.
 
 #### Table: 2018-19 UEFA association club coefficients for competing nations
+
 ```{r}
 country_coefficients = read_csv('../data/raw/League_Participant_Info_2018-19.csv') %>%
   select(full_name, last_association_coef) %>%
@@ -163,7 +176,9 @@ country_coefficients = read_csv('../data/raw/League_Participant_Info_2018-19.csv
 
 country_coefficients
 ```
+
 In the 2018-19 season of the Russian League, *Yenisey* finished in last place, so we'll use them as our reference for fitting the Bradley-Terry model.
+
 ```{r}
 fit <-
   BradleyTerry2::BTm(
@@ -180,6 +195,7 @@ lambda_hat = lambda_hat %>% drop_na() %>% arrange(desc(ability))
 lambda_hat = rownames_to_column(lambda_hat) %>% rename(team = rowname)
 lambda_hat
 ```
+
 Given the summary of the Bradley-Terry model and its resulting team strengths, it seems that the results were relatively sensitive to positive results for teams in skewed competitions. In other words, in leagues that are typically dominated by a small number of teams (Greece, Czechia), results over and by the top teams in the competitions were "rewarded" more than their counterparts in other "fairer" competitions (England, Spain). Subjectively, clubs like Slavia Prague typically due dominant their domestic competition, which means we would expect a high "ability" assignment, like we see in this model.
 
 For the sake of our project, we'll only focus on the strengths of the clubs competing in the 2019-20 UEFA Champions League group stages and round of 16. From this, we see the aforementioned Slavia Prague leading in "domestic strength", along with other dominant teams from smaller nations, like Olympiacos from Greece and Dinamo Zagreb from Croatia. This aligns with our prior assumptions,
@@ -190,6 +206,7 @@ uefa = uefa %>% select(Home) %>% mutate(Country = str_extract(uefa$Home, " [a-z]
 champs_w_league_ratings = uefa %>% left_join(lambda_hat %>% rename(Home = team)) %>% unique() %>% replace(is.na(.), 0)
 champs_w_league_ratings %>% arrange(desc(ability))
 ```
+
 ```{r, echo=FALSE}
 strongest = champs_w_league_ratings %>% arrange(desc(ability)) %>% head(5)
 plot = ggplot2::ggplot(strongest, aes(Home, ability)) + 
@@ -206,7 +223,6 @@ ggsave("domestic.png", dpi = 300)
 ```{r}
 uefa = remove_xg(uefa)
 ```
-
 
 ```{r}
 uefa = read_csv('../data/raw/UEFA_Champions_League_2020_Results_RAW.csv') 
@@ -226,12 +242,14 @@ uefa_group_ro16
 ```
 
 ```{r}
+z = colnames(uefa)
+z = z[colnames(uefa) %in% colnames(all)]
+uefa = uefa %>% select(z)
 all_combined = all %>% rbind(uefa)
 
 
 head(all_combined)
 ```
-
 
 ```{r}
 
@@ -283,7 +301,6 @@ plot = ggplot2::ggplot(combined_lambda_hat %>% arrange(desc(ability)) %>% head(5
 plot
 ```
 
-
 ```{r}
 uefa_playoff_teams= c(
   "Atalanta", "RB Leipzig", "Barcelona", "Manchester City",
@@ -329,7 +346,6 @@ strength_plot
 
 ```
 
-
 ```{r}
 avg_goals = uefa %>%
   filter(Round %in% c("Group stage", "Round of 16")) %>%
@@ -348,10 +364,10 @@ quarters
 
 ```
 
-
 ##### Two-legged quarter-finals and semi-finals simulation
 
 In the 19/20 UCL season, the quarter-finals and semi-finals were changed from being 2 legged to just a one leg match. We will simulate the quarter-finals and semi-finals as if it were 2-legged by using the aggregate goals to decide the winner over the two legs. To simulate how many goals a team would score, we use the team's ability based on the Bradley-Terry model and the average goal scored over the UCL Group Stage and Round of 16
+
 ```{r}
 # compute win probabilities
 possible_matchups = quarters %>%
@@ -616,8 +632,6 @@ ggsave("ucl_final_matchups.png", final_plot, width = 8, height = 5, dpi = 300)
 final_plot
 
 ```
-
-
 
 ## Endnotes {#endnotes}
 

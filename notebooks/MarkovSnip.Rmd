@@ -22,7 +22,7 @@ require(tidyverse, quietly = TRUE)
 # devtools::install_github("hturner/BradleyTerry2")
 require(BradleyTerry2, quietly = TRUE)
 library(scales)
-library(gt)
+require(gt)
 #devtools::install_github("hrbrmstr/hrbrthemes", quiet = TRUE)
 #require(hrbrthemes, quietly = TRUE)
 ```
@@ -255,7 +255,8 @@ domestic_restricted <- all %>%
   filter(Home %in% ucl_teams | Away %in% ucl_teams) %>%
   filter(HomeGoals != AwayGoals) %>%
   filter(!stringr::str_detect(Round, "play-offs") | is.na(Round))
-
+wt_ucl = 8
+wt_dom = 1
 
 bt_dom <- domestic_restricted %>%
   transmute(
